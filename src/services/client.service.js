@@ -1,71 +1,103 @@
-const express = require('express');
 const { faker } = require('@faker-js/faker');
 const boom = require('@hapi/boom');
+
+const { pool } = require('../libs/postgres');
 
 class ClientService {
 
     constructor() {
         this.clients = [];
-        this.generate();
+        this.pool = pool;
+        this.pool.on('error', (err) => { boom.badImplementation(err) })
     }
 
     async generate() {
         const limit = 10;
         for (let i = 0; i < limit; i++) {
-            this.clients.push({
-                id: faker.datatype.uuid(),
-                name: faker.name.fullName(),
-                gender: faker.name.gender(),
-                jobArea: faker.name.jobArea(),
-                jobTitle: faker.name.jobTitle(),
-                isBlocked: faker.datatype.boolean()
-            })
+            const name = faker.name.fullName();
+            const email = faker.internet.email();
+            const telephone = faker.phone.number();
+
+            const query = 'INSERT INTO Clientes (Nombre, Email, Telefono) VALUES ($1, $2, $3)';
+            const values = [name, email, telephone];
+
+            try {
+                await pool.query(query, values);
+            } catch (err) {
+                boom.badImplementation(err);
+            }
         }
     }
 
     async create(data) {
-        const newClient = {
-            id: faker.datatype.uuid(),
-            ...data
+        const { name, email, telephone } = data;
+        const query = 'INSERT INTO Clientes (Nombre, Email, Telefono) VALUES ($1, $2, $3) RETURNING *';
+        const values = [name, email, telephone];
+
+        try {
+            const res = await pool.query(query, values);
+            return res.rows[0];
+        } catch (err) {
+            boom.badData(err);
+            throw err;
         }
-        this.clients.push(newClient);
-        return newClient;
     }
 
     async find() {
-        return this.clients;
+        const query = 'SELECT * FROM clientes';
+        const result = await this.pool.query(query)
+        return result.rows;
     }
 
     async findOne(id) {
-        const client = this.clients.find(client => client.id === id);
-        if (!client) {
-            throw boom.notFound('Client not found');
+        const query = 'SELECT * FROM Clientes WHERE ClienteID = $1';
+        const values = [id];
+
+        try {
+            const res = await pool.query(query, values);
+            if (res.rows.length === 0) {
+                throw boom.notFound('Client not found');
+            }
+            return res.rows[0];
+        } catch (err) {
+            boom.badImplementation(err);
+            throw err;
         }
-        if (client.isBlocked) {
-            throw boom.conflict('Client is blocked');
-        }
-        return client;
     }
 
     async update(id, changes) {
-        const index = this.clients.findIndex(client => client.id === id);
-        if (index === -1) {
-            throw boom.notFound('Client not found');
-        }
-        const client = this.clients[index];
-        this.clients[index] = {
-            ...changes,
-            ...client
+        const setString = Object.keys(changes).map((key, index) => `${key} = $${index + 2}`).join(', ');
+        const query = `UPDATE Clientes SET ${setString} WHERE ClienteID = $1 RETURNING *`;
+        const values = [id, ...Object.values(changes)];
+
+        try {
+            const res = await pool.query(query, values);
+            if (res.rows.length === 0) {
+                throw boom.notFound('Client not found');
+            }
+            return res.rows[0];
+        } catch (err) {
+            boom.badImplementation(err);
+            throw err;
         }
     }
 
-    async delete(id) {
-        const index = this.clients.findIndex(client => client.id === id);
-        if (index === -1) {
-            throw boom.notFound('Client not found');
+    async deleteClient(id) {
+        const query = 'DELETE FROM Clientes WHERE ClienteID = $1 RETURNING *';
+        const values = [id];
+
+        try {
+            const res = await pool.query(query, values);
+            if (res.rowCount === 0) {
+                throw boom.notFound('Client not found');
+            }
+            return res.rows[0];
+        } catch (err) {
+            boom.badImplementation(err);
+            throw err;
         }
-        this.clients.splice(index, 1);
     }
+
 }
 
 module.exports = ClientService;

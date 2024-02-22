@@ -26,12 +26,17 @@ router.get("/:id", validatorHandler(getClientSchema, 'params'),
     });
 
 router.post('/', validatorHandler(createClientSchema, 'body'),
-    async (req, res) => {
-        const { body } = req;
-        await clientService.create(body);
-        res.status(201).json({
-            message: 'created',
-        });
+    async (req, res, next) => {
+        try {
+            const { body } = req;
+            await clientService.create(body);
+            res.status(201).json({
+                message: 'created',
+            });
+        }
+        catch (error) {
+            next(error);
+        }
     });
 
 router.patch('/:id', async (req, res) => {
@@ -47,11 +52,11 @@ router.patch('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
-    await clientService.delete(id);
+    await clientService.deleteClient(id);
     res.status(200).json({
         message: 'deleted',
         id,
     });
 });
 
-module.exports = router; 14983758526
+module.exports = router;
