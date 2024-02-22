@@ -1,25 +1,62 @@
 const express = require('express');
-const { faker } = require('@faker-js/faker');
+const { ConcessionairesService } = require('../services/concessionaires.service'); // Ajusta la ruta según tu estructura de proyecto
+const boom = require('@hapi/boom');
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    const concessionaire = [];
-    const namesConcessionaire = ['Concesionario Las Aguas', 'Concesionario Villalba', 'Concesionario Interior', 'Concesionario Exterior'];
-    const cities = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla'];
-    for (let i = 0; i < 4; i++) {
-        concessionaire.push({
-            id: faker.datatype.uuid(),
-            name: namesConcessionaire[i],
-            address: `Calle 123 # 45 - ${i}`,
-            city: cities[i],
-        });
+const concessionairesService = new ConcessionairesService();
+
+router.post('/', async (req, res, next) => {
+    try {
+        const concessionaires = await concessionairesService.create(req.body);
+        res.status(201).json(concessionaires);
+    } catch (error) {
+        next(boom.badImplementation(error.message));
     }
-    res.json(concessionaire);
 });
 
-router.get('/concessionaire/:id', (req, res) => {
-    const { id } = req.params;
-    res.json({ id });
-})
+router.get('/', async (req, res, next) => {
+    try {
+        const concessionaires = await concessionairesService.find();
+        res.json(concessionaires);
+    } catch (error) {
+        next(boom.badImplementation(error.message));
+    }
+});
+
+router.get('/:id', async (req, res, next) => {
+    try {
+        const concessionaires = await concessionairesService.findOne(req.params.id);
+        if (!concessionaires) {
+            throw boom.notFound('Dealership not found');
+        }
+        res.json(concessionaires);
+    } catch (error) {
+        next(error.isBoom ? error : boom.badImplementation(error.message));
+    }
+});
+
+router.put('/:id', async (req, res, next) => {
+    try {
+        const updatedConcessionaires = await concessionairesService.update(req.params.id, req.body);
+        if (!updatedConcessionaires) {
+            throw boom.notFound('Concessionaire not found');
+        }
+        res.json(updatedConcessionaires);
+    } catch (error) {
+        next(error.isBoom ? error : boom.badImplementation(error.message));
+    }
+});
+
+router.delete('/:id', async (req, res, next) => {
+    try {
+        const result = await concessionairesService.deleteConcessionaire(req.params.id);
+        if (!result) {
+            throw boom.notFound('Concessionaire not found');
+        }
+        res.status(204).send();
+    } catch (error) {
+        next(error.isBoom ? error : boom.badImplementation(error.message));
+    }
+});
 
 module.exports = router;
