@@ -5,7 +5,7 @@ const ClientService = require('../services/client.service');
 const clientService = new ClientService();
 
 const { validatorHandler } = require('../middlewares/validator.handler');
-const { createClientSchema } = require('../schemas/client.schema');
+const { createClientSchema, getClientSchema } = require('../schemas/client.schema');
 
 
 router.get('/', async (req, res) => {
@@ -14,23 +14,25 @@ router.get('/', async (req, res) => {
 });
 
 
-router.get("/:id", async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const client = await clientService.findOne(id);
-        res.status(200).json(client);
-    } catch (error) {
-        next(error);
-    }
-});
-
-router.post('/', async (req, res) => {
-    const { body } = req;
-    await clientService.create(body);
-    res.status(201).json({
-        message: 'created',
+router.get("/:id", validatorHandler(getClientSchema, 'params'),
+    async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const client = await clientService.findOne(id);
+            res.status(200).json(client);
+        } catch (error) {
+            next(error);
+        }
     });
-});
+
+router.post('/', validatorHandler(createClientSchema, 'body'),
+    async (req, res) => {
+        const { body } = req;
+        await clientService.create(body);
+        res.status(201).json({
+            message: 'created',
+        });
+    });
 
 router.patch('/:id', async (req, res) => {
     const { id } = req.params;
@@ -52,4 +54,4 @@ router.delete('/:id', async (req, res) => {
     });
 });
 
-module.exports = router;14983758526
+module.exports = router; 14983758526
